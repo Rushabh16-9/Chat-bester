@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { MessageSquareHeart, Key, Sparkles, Zap } from "lucide-react";
+import { MessageSquareHeart, Key, Zap } from "lucide-react";
 
 interface HeaderProps {
   apiKey: string;
@@ -43,15 +43,13 @@ export default function Header({ apiKey, onOpenKeyModal, onLoadExample }: Header
 
           <button
             onClick={onOpenKeyModal}
-            className={`flex items-center space-x-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
-              apiKey
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
-            }`}
+            className="flex items-center space-x-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition"
           >
-            <Key className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{apiKey ? "API Key Set" : "Gemini API Key"}</span>
-            {apiKey && <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>}
+            <Key className="h-3.5 w-3.5 text-blue-400" />
+            <span className="hidden sm:inline">
+              {apiKey ? "Custom Key Set" : "API Key Settings"}
+            </span>
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" title="Server .env API Key is active by default"></span>
           </button>
         </div>
       </div>

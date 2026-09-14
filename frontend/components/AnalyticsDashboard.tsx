@@ -48,7 +48,7 @@ export default function AnalyticsDashboard({
               <span>AI Chat Coach Ready</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-white">
-              Want personalized recommendations or flirty lines?
+              Want personalized recommendations
             </h2>
             <p className="text-xs text-slate-300 max-w-xl mt-1">
               Select your goal (Crush, Rekindle, Banter, Fight Resolution, Ask Out) and get exact reply suggestions using Gemini AI!

@@ -2,19 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseWhatsAppChat, computeAnalytics } from "@/lib/parser";
 
 async function callGeminiAPI(prompt: string, apiKey: string): Promise<string> {
+  const cleanKey = apiKey ? apiKey.trim() : "";
+  if (cleanKey.startsWith("AQ.") || cleanKey.startsWith("ya29.")) {
+    throw new Error(
+      "Invalid API Key format. You entered a GCP/OAuth token instead of a Gemini API Key. Please get a free Gemini API Key starting with 'AIzaSy...' from https://aistudio.google.com/app/apikey"
+    );
+  }
+
   const candidateModels = [
     process.env.GEMINI_MODEL,
-    "gemini-2.5-flash",
+    "gemini-1.5-flash",
     "gemini-2.0-flash",
-    "gemini-1.5-flash-latest",
-    "gemini-2.5-flash-lite",
+    "gemini-1.5-pro",
+    "gemini-2.5-flash",
   ].filter(Boolean) as string[];
 
   let lastError = "";
   for (const model of candidateModels) {
     try {
       const resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -3,10 +3,8 @@ import { parseWhatsAppChat, computeAnalytics } from "@/lib/parser";
 
 async function callGeminiAPI(prompt: string, apiKey: string): Promise<string> {
   const cleanKey = apiKey ? apiKey.trim() : "";
-  if (cleanKey.startsWith("AQ.") || cleanKey.startsWith("ya29.")) {
-    throw new Error(
-      "Invalid API Key format. You entered a GCP/OAuth token instead of a Gemini API Key. Please get a free Gemini API Key starting with 'AIzaSy...' from https://aistudio.google.com/app/apikey"
-    );
+  if (!cleanKey) {
+    throw new Error("Gemini API key is missing.");
   }
 
   const candidateModels = [

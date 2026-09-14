@@ -3,43 +3,76 @@ import json
 from typing import Dict, Any, Optional
 
 def call_gemini_api(prompt: str, api_key: str) -> str:
-    """Invokes Google Gemini model using available Python SDK or fallback."""
+    """Invokes Google Gemini API with automatic free-tier model fallback (gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-flash-latest)."""
     if not api_key:
         api_key = os.environ.get("GEMINI_API_KEY", "")
         
     if not api_key:
         raise ValueError("Gemini API key is required. Please set GEMINI_API_KEY or provide it in the request.")
 
-    # Try official google-genai SDK first
+    candidate_models = [
+        os.environ.get("GEMINI_MODEL", "").strip(),
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash-latest",
+        "gemini-2.5-flash-lite",
+    ]
+    candidate_models = [m for m in candidate_models if m]
+
+    errors = []
+
+    # 1. Try official google-genai SDK first
     try:
         from google import genai
         client = genai.Client(api_key=api_key)
-        # Try gemini-2.5-flash or fallback model
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
-        )
-        return response.text
-    except Exception as e1:
-        # Fallback to google-generativeai legacy SDK
+        for model_name in candidate_models:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt
+                )
+                if response and hasattr(response, "text") and response.text:
+                    return response.text
+            except Exception as ex:
+                errors.append(f"google-genai ({model_name}): {ex}")
+    except ImportError:
+        pass
+
+    # 2. Try legacy google-generativeai SDK
+    try:
+        import google.generativeai as genai_legacy
+        genai_legacy.configure(api_key=api_key)
+        for model_name in candidate_models:
+            try:
+                model = genai_legacy.GenerativeModel(model_name)
+                response = model.generate_content(prompt)
+                if response and hasattr(response, "text") and response.text:
+                    return response.text
+            except Exception as ex:
+                errors.append(f"google-generativeai ({model_name}): {ex}")
+    except ImportError:
+        pass
+
+    # 3. Direct HTTP REST fallback with urllib
+    import urllib.request
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+
+    for model_name in candidate_models:
         try:
-            import google.generativeai as genai_legacy
-            genai_legacy.configure(api_key=api_key)
-            model = genai_legacy.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(prompt)
-            return response.text
-        except Exception as e2:
-            # Fallback to direct HTTP request using urllib
-            import urllib.request
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-            headers = {"Content-Type": "application/json"}
-            payload = {
-                "contents": [{"parts": [{"text": prompt}]}]
-            }
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
             req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
             with urllib.request.urlopen(req) as resp:
                 result = json.loads(resp.read().decode("utf-8"))
-                return result["candidates"][0]["content"]["parts"][0]["text"]
+                text = result["candidates"][0]["content"]["parts"][0]["text"]
+                if text:
+                    return text
+        except Exception as ex:
+            errors.append(f"urllib REST ({model_name}): {ex}")
+
+    raise RuntimeError(f"All Gemini API model calls failed: {'; '.join(errors)}")
 
 def generate_chat_insights(analytics_data: Dict[str, Any], recent_snippet: str, api_key: str = "") -> Dict[str, Any]:
     prompt = f"""

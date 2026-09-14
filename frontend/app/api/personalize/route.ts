@@ -1,6 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseWhatsAppChat, computeAnalytics } from "@/lib/parser";
 
+async function callGeminiAPI(prompt: string, apiKey: string): Promise<string> {
+  const candidateModels = [
+    process.env.GEMINI_MODEL,
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash-latest",
+    "gemini-2.5-flash-lite",
+  ].filter(Boolean) as string[];
+
+  let lastError = "";
+  for (const model of candidateModels) {
+    try {
+      const resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        }
+      );
+      if (resp.ok) {
+        const gData = await resp.json();
+        const text = gData.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text;
+      } else {
+        lastError = await resp.text();
+      }
+    } catch (e: any) {
+      lastError = e.message || String(e);
+    }
+  }
+  throw new Error(`Gemini API error across models: ${lastError}`);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -75,22 +109,7 @@ Output MUST be valid JSON with this exact schema:
 Return ONLY valid JSON.
 `;
 
-    const geminiResp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${keyToUse}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      }
-    );
-
-    if (!geminiResp.ok) {
-      const errText = await geminiResp.text();
-      return NextResponse.json({ error: `Gemini API error: ${errText}` }, { status: 500 });
-    }
-
-    const gData = await geminiResp.json();
-    const rawText = gData.candidates[0].content.parts[0].text;
+    const rawText = await callGeminiAPI(prompt, keyToUse);
     const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
     const advice = JSON.parse(cleanText);
 

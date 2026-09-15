@@ -12,10 +12,9 @@ def call_gemini_api(prompt: str, api_key: str) -> str:
 
     candidate_models = [
         os.environ.get("GEMINI_MODEL", "").strip(),
+        "gemini-3.6-flash",
         "gemini-1.5-flash",
-        "gemini-2.0-flash",
         "gemini-1.5-pro",
-        "gemini-2.5-flash",
     ]
     candidate_models = [m for m in candidate_models if m]
 
